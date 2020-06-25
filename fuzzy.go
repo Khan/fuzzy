@@ -332,57 +332,105 @@ func (model *Model) TrainQuery(term string) {
 func (model *Model) createSuggestKeys(term string) {
 	edits := model.EditsMulti(term, model.Depth)
 	for _, edit := range edits {
+		if len(edit) <= 1 {
+			continue
+		}
 		skip := false
 		for _, hit := range model.Suggest[edit] {
 			if hit == term {
 				// Already know about this one
 				skip = true
-				continue
+				break
 			}
 		}
-		if !skip && len(edit) > 1 {
+		if !skip {
 			model.Suggest[edit] = append(model.Suggest[edit], term)
 		}
 	}
 }
 
+func binom(n, k int) int {
+	if k > n/2 {
+		k = n - k
+	}
+	ret := 1
+	for i := 0; i < k; i++ {
+		ret = ret * n
+	}
+	for i := 0; i < k; i++ {
+		ret = ret / k
+	}
+	return ret
+}
+
+func binomsum(n, k int) int {
+	ret := 0
+	for i := 0; i <= k; i++ {
+		ret += binom(n, i)
+	}
+	return ret
+}
+
 // Edits at any depth for a given term. The depth of the model is used
 func (model *Model) EditsMulti(term string, depth int) []string {
-	edits := Edits1(term)
-	for {
-		depth--
-		if depth <= 0 {
-			break
+	n := len(term)
+	edits := make([]string, 0, binomsum(n, depth))
+	edits = append(edits, term)
+
+	var buf strings.Builder
+	indexes := make([]int, depth)
+	for i := 1; i <= depth; i++ {
+		for j := 0; j < i; j++ {
+			indexes[j] = j
 		}
-		for _, edit := range edits {
-			edits2 := Edits1(edit)
-			for _, edit2 := range edits2 {
-				edits = append(edits, edit2)
+
+		for {
+			buf.Reset()
+			buf.Grow(n - i)
+			buf.WriteString(term[:indexes[0]])
+			for j := 1; j < i; j++ {
+				buf.WriteString(term[indexes[j-1]+1 : indexes[j]])
+			}
+			buf.WriteString(term[indexes[i-1]+1:])
+			edits = append(edits, buf.String())
+
+			// go to next index
+			incremented := false
+			for j := 0; j < i; j++ {
+				if indexes[i-j-1] < n-j-1 {
+					incremented = true
+					indexes[i-j-1]++
+					for k := 0; k < j; k++ {
+						indexes[i-j+k] = indexes[i-j-1+k] + 1
+					}
+					break
+				}
+			}
+			if !incremented {
+				break
 			}
 		}
 	}
+
+	if strings.HasSuffix(term, "ies") {
+		edits = append(edits, model.EditsMulti(term[:n-3]+"ys", depth-1)...)
+	}
+	if strings.HasSuffix(term, "ys") {
+		edits = append(edits, model.EditsMulti(term[:n-2]+"ies", depth-1)...)
+	}
+
 	return edits
 }
 
 // Edits1 creates a set of terms that are 1 char delete from the input term
 func Edits1(word string) []string {
-
-	splits := []Pair{}
-	for i := 0; i <= len(word); i++ {
-		splits = append(splits, Pair{word[:i], word[i:]})
+	total_set := make([]string, 0, len(word)+2)
+	for i := 0; i < len(word); i++ {
+		// delete ith character
+		total_set = append(total_set, word[:i]+word[i+1:])
 	}
 
-	total_set := []string{}
-	for _, elem := range splits {
-
-		//deletion
-		if len(elem.str2) > 0 {
-			total_set = append(total_set, elem.str1+elem.str2[1:])
-		} else {
-			total_set = append(total_set, elem.str1)
-		}
-
-	}
+	total_set = append(total_set, word)
 
 	// Special case ending in "ies" or "ys"
 	if strings.HasSuffix(word, "ies") {

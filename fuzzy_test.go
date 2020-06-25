@@ -2,7 +2,9 @@ package fuzzy
 
 import (
 	"fmt"
+	"reflect"
 	"runtime"
+	"sort"
 	"strings"
 	"sync"
 	"testing"
@@ -345,7 +347,7 @@ func TestAutocomplete(t *testing.T) {
 	model.Train(sampleEnglish)
 	out, err := model.Autocomplete("accoun")
 	if err != nil {
-		t.Errorf("Auocomplete() returned and error: ", err)
+		t.Errorf("Auocomplete() returned an error: %v", err)
 	}
 	expected := map[string]bool{
 		"account":    true,
@@ -375,7 +377,7 @@ func TestAutocompleteFromQueries(t *testing.T) {
 
 	out, err := model.Autocomplete("eve")
 	if err != nil {
-		t.Errorf("Auocomplete() returned and error: ", err)
+		t.Errorf("Auocomplete() returned an error: %v", err)
 	}
 	if out[0] != "everest" {
 		t.Errorf("Autocomplete failed to account for query training")
@@ -388,5 +390,32 @@ func TestAutocompleteFromQueries(t *testing.T) {
 func TestLoadOldModel(t *testing.T) {
 	if _, err := Load("data/test.dict"); err != nil {
 		t.Errorf("Couldn't load old model format: %v", err)
+	}
+}
+
+func TestEditsMulti(t *testing.T) {
+	model := NewModel()
+	got := model.EditsMulti("elephant", model.Depth)
+	sort.Strings(got)
+	want := []string{
+		"eehant", "eepant", "eephan", "eephant", "eephat", "eephnt", "eleant",
+		"elehan", "elehant", "elehat", "elehnt", "elepan", "elepant", "elepat",
+		"elepha", "elephan", "elephant", "elephat", "elephn", "elephnt",
+		"elepht", "elepnt", "elhant", "elpant", "elphan", "elphant", "elphat",
+		"elphnt", "ephant", "ephant", "lehant", "lepant", "lephan", "lephant",
+		"lephat", "lephnt", "lphant",
+	}
+
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("EditsMulti didn't match:\nGot:  %v\nWant: %v", got, want)
+	}
+}
+
+var result []string // prevent the benchmark from getting optimized out
+
+func BenchmarkEditsMulti(b *testing.B) {
+	model := NewModel()
+	for i := 0; i < b.N; i++ {
+		result = model.EditsMulti("elephant", model.Depth)
 	}
 }
