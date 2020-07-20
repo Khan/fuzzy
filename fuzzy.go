@@ -377,6 +377,10 @@ func (model *Model) EditsMulti(term string, depth int) []string {
 	edits := make([]string, 0, binomsum(n, depth))
 	edits = append(edits, term)
 
+	if depth < 1 {
+		return edits
+	}
+
 	var buf strings.Builder
 	indexes := make([]int, depth)
 	for i := 1; i <= depth; i++ {
@@ -385,6 +389,9 @@ func (model *Model) EditsMulti(term string, depth int) []string {
 		}
 
 		for {
+			if n - i < 0 {
+				break
+			}
 			buf.Reset()
 			buf.Grow(n - i)
 			buf.WriteString(term[:indexes[0]])

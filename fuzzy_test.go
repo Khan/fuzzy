@@ -395,19 +395,43 @@ func TestLoadOldModel(t *testing.T) {
 
 func TestEditsMulti(t *testing.T) {
 	model := NewModel()
-	got := model.EditsMulti("elephant", model.Depth)
-	sort.Strings(got)
-	want := []string{
-		"eehant", "eepant", "eephan", "eephant", "eephat", "eephnt", "eleant",
-		"elehan", "elehant", "elehat", "elehnt", "elepan", "elepant", "elepat",
-		"elepha", "elephan", "elephant", "elephat", "elephn", "elephnt",
-		"elepht", "elepnt", "elhant", "elpant", "elphan", "elphant", "elphat",
-		"elphnt", "ephant", "ephant", "lehant", "lepant", "lephan", "lephant",
-		"lephat", "lephnt", "lphant",
+	var tests = []struct {
+		term string
+		want []string
+	}{
+		{
+			"elephant",
+			[]string{
+				"eehant", "eepant", "eephan", "eephant", "eephat", "eephnt", "eleant",
+				"elehan", "elehant", "elehat", "elehnt", "elepan", "elepant", "elepat",
+				"elepha", "elephan", "elephant", "elephat", "elephn", "elephnt",
+				"elepht", "elepnt", "elhant", "elpant", "elphan", "elphant", "elphat",
+				"elphnt", "ephant", "ephant", "lehant", "lepant", "lephan", "lephant",
+				"lephat", "lephnt", "lphant",
+			},
+		},
+		{
+			"bunnies",
+			[]string{
+				"bnies", "bnies", "bnnes", "bnnie", "bnnies", "bnnis", "bnnys", "buies",
+				"bunes", "bunes", "bunie", "bunie", "bunies", "bunies", "bunis", "bunis",
+				"bunne", "bunnes", "bunni", "bunnie", "bunnies", "bunnies", "bunnis",
+				"bunns", "bunns", "bunny", "bunnys", "bunys", "bunys", "nnies", "unies",
+				"unies", "unnes", "unnie", "unnies", "unnis", "unnys",
+			},
+		},
+		{
+			"a",
+			[]string{"", "a"},
+		},
 	}
 
-	if !reflect.DeepEqual(got, want) {
-		t.Errorf("EditsMulti didn't match:\nGot:  %v\nWant: %v", got, want)
+	for _, test := range tests {
+		got := model.EditsMulti(test.term, model.Depth)
+		sort.Strings(got)
+		if !reflect.DeepEqual(got, test.want) {
+			t.Errorf("EditsMulti didn't match:\nGot:  %v\nWant: %v", got, test.want)
+		}
 	}
 }
 
